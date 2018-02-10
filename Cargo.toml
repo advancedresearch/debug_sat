@@ -1,0 +1,13 @@
+[package]
+name = "debug_sat"
+version = "0.1.0"
+authors = ["Sven Nilsen <bvssvni@gmail.com>"]
+keywords = ["sat", "debug", "automated", "theorem", "proving"]
+description = "A debuggable automatic theorem prover for boolean satisfiability problems (SAT)."
+license = "MIT"
+repository = "https://github.com/advancedresearch/debug_sat.git"
+homepage = "https://github.com/advancedresearch/debug_sat"
+documentation = "https://docs.rs/debug_sat"
+readme = "README.md"
+
+[dependencies]
