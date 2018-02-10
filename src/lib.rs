@@ -346,32 +346,6 @@ impl Graph {
         }
     }
 
-    /// Checks whether it can be proven that both sides are equal to each other.
-    pub fn refl(&mut self, ind: usize) -> Proof {
-        if let Expression::Eq(a, b) = self.exprs[ind] {
-            let id = (a.min(b), a.max(b));
-            if let Some(val) = self.havox(id) {
-                return if val {
-                    let tr = self.true_();
-                    self.proof_add_havox((tr, ind), true)
-                } else {
-                    // The sides are not equal to each other, but there is no contradiction.
-                    Proof::Unexpected
-                };
-            };
-            if self.exprs[a] == self.exprs[b] {
-                self.add_havox(id, true);
-                let tr = self.true_();
-                self.proof_add_havox((tr, ind), true)
-            } else {
-                Proof::Unknown
-            }
-        } else {
-            // Expected `=`.
-            Proof::Error
-        }
-    }
-
     /// Checks whether it can be proven that one of the arguments are true.
     /// This means the return value depends on the other argument.
     pub fn true_and(&mut self, ind: usize) -> Proof {
@@ -548,6 +522,50 @@ impl Graph {
                     self.proof_add_havox((b.min(ind), b.max(ind)), true)
                 } else {
                     // Assumption is false, but there is no contradiction.
+                    Proof::Unexpected
+                }
+            } else {
+                Proof::Unknown
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks whether arguments to `eq` expression are inequal.
+    ///
+    /// This means that the `eq` expression must be equal to false.
+    pub fn false_eq(&mut self, ind: usize) -> Proof {
+        if let Expression::Eq(a, b) = self.exprs[ind] {
+            let id = (a.min(b), a.max(b));
+            if let Some(val) = self.havox(id) {
+                if !val {
+                    let id = (self.false_(), ind);
+                    self.proof_add_havox(id, true)
+                } else {
+                    // The arguments are equal, but there is no contradiction.
+                    Proof::Unexpected
+                }
+            } else {
+                Proof::Unknown
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks whether arguments to `eq` expression are equal.
+    ///
+    /// This means that the `eq` expression must be equal to true.
+    pub fn true_eq(&mut self, ind: usize) -> Proof {
+        if let Expression::Eq(a, b) = self.exprs[ind] {
+            let id = (a.min(b), a.max(b));
+            if let Some(val) = self.havox(id) {
+                if val {
+                    let id = (self.true_(), ind);
+                    self.proof_add_havox(id, true)
+                } else {
+                    // The arguments are inequal, but there is no contradiction.
                     Proof::Unexpected
                 }
             } else {
@@ -961,9 +979,10 @@ impl Graph {
                 if self.false_or(i) == Proof::False {return Proof::False};
                 if self.true_imply(i) == Proof::False {return Proof::False};
                 if self.false_imply(i) == Proof::False {return Proof::False};
+                if self.false_eq(i) == Proof::False {return Proof::False};
+                if self.true_eq(i) == Proof::False {return Proof::False};
                 if self.paradox(i) == Proof::False {return Proof::False};
                 if self.tautology(i) == Proof::False {return Proof::False};
-                if self.refl(i) == Proof::False {return Proof::False};
                 if self.eq_true(i) == Proof::False {return Proof::False};
                 if self.eq_false(i) == Proof::False {return Proof::False};
                 if self.eq_and(i) == Proof::False {return Proof::False};
@@ -1090,38 +1109,6 @@ mod tests {
     use self::test::Bencher;
 
     #[test]
-    fn refl() {
-        let ref mut g = Graph::new();
-        let a = g.var(0);
-        // a = a
-        let eq_a_a = g.eq(a, a);
-        assert_eq!(g.refl(eq_a_a), Proof::True);
-        let tr = g.true_();
-        assert_eq!(g.are_eq(eq_a_a, tr), Some(true));
-
-        // Assuming `a = a` is false, there is no solution for `a`.
-        let ref mut g = Graph::new();
-        let a = g.var(0);
-        // a = a
-        let eq_a_a = g.eq(a, a);
-        let fa = g.false_();
-        let _ = g.assume_eq(eq_a_a, fa);
-        assert_eq!(g.refl(eq_a_a), Proof::False);
-
-        let ref mut g = Graph::new();
-        let a = g.var(0);
-        let b = g.var(1);
-        let eq_a_b = g.eq(a, b);
-        assert_eq!(g.refl(eq_a_b), Proof::Unknown);
-        let eq_false = g.assume_eq(eq_a_b, fa);
-        assert_eq!(g.refl(eq_a_b), Proof::Unknown);
-        eq_false.undo(g);
-        let a_neq_b = g.assume_neq(a, b);
-        assert_eq!(g.refl(eq_a_b), Proof::Unexpected);
-        a_neq_b.undo(g);
-    }
-
-    #[test]
     fn false_imply() {
         let mut g = Graph::new();
         let a = g.var(0);
@@ -1158,6 +1145,30 @@ mod tests {
         let a_not_tr = a_tr.invert(g);  // a != true
         assert_eq!(g.are_eq(tr, b), Some(false));
         a_not_tr.undo(g);
+    }
+
+    #[test]
+    fn false_eq() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let eq = g.eq(a, b);
+        let _ = g.assume_neq(a, b);
+        assert_eq!(g.false_eq(eq), Proof::True);
+        let fa = g.false_();
+        assert_eq!(g.are_eq(eq, fa), Some(true));
+    }
+
+    #[test]
+    fn true_eq() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let eq = g.eq(a, b);
+        let _ = g.assume_eq(a, b);
+        assert_eq!(g.true_eq(eq), Proof::True);
+        let tr = g.true_();
+        assert_eq!(g.are_eq(eq, tr), Some(true));
     }
 
     #[test]
@@ -1713,5 +1724,29 @@ mod tests {
         let or = g.or(a, tr);
         assert_eq!(g.solve(), Proof::True);
         assert_eq!(g.are_eq(or, tr), Some(true));
+    }
+
+    #[test]
+    fn proof_17() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let eq = g.eq(a, b);
+        let _ = g.assume_neq(a, b);
+        assert_eq!(g.solve(), Proof::True);
+        let fa = g.false_();
+        assert_eq!(g.are_eq(eq, fa), Some(true));
+    }
+
+    #[test]
+    fn proof_18() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let eq = g.eq(a, b);
+        let _ = g.assume_eq(a, b);
+        assert_eq!(g.solve(), Proof::True);
+        let tr = g.true_();
+        assert_eq!(g.are_eq(eq, tr), Some(true));
     }
 }
