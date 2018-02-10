@@ -704,14 +704,14 @@ impl Graph {
                 if val {
                     let id = (fa, a);
                     if let Some(val) = self.havox(id) {
-                        if val {return Proof::False};
+                        if !val {return Proof::False};
                     } else {
                         // The first argument is always false.
                         self.add_havox(id, true);
                     }
                     let id = (fa, b);
                     if let Some(val) = self.havox(id) {
-                        if val {return Proof::False};
+                        if !val {return Proof::False};
                     } else {
                         // The second argument is always false.
                         self.add_havox(id, true);
@@ -1280,6 +1280,34 @@ mod tests {
         let b_is_false = g.assume_eq(b, fa);
         assert_eq!(g.false_and(and), Proof::True);
         b_is_false.undo(g);
+    }
+
+    #[test]
+    fn or_false() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let or = g.or(a, b);
+        let fa = g.false_();
+
+        let _ = g.assume_eq(a, fa);
+        let _ = g.assume_eq(b, fa);
+        let _ = g.assume_eq(or, fa);
+        assert_eq!(g.or_false(or), Proof::True);
+    }
+
+    #[test]
+    fn and_true() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let and = g.and(a, b);
+        let tr = g.true_();
+
+        let _ = g.assume_eq(a, tr);
+        let _ = g.assume_eq(b, tr);
+        let _ = g.assume_eq(and, tr);
+        assert_eq!(g.and_true(and), Proof::True);
     }
 
     #[test]
