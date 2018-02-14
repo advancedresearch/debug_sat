@@ -1,6 +1,6 @@
 [package]
 name = "debug_sat"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Sven Nilsen <bvssvni@gmail.com>"]
 keywords = ["sat", "debug", "automated", "theorem", "proving"]
 description = "A debuggable automatic theorem prover for boolean satisfiability problems (SAT)."

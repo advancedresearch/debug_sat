@@ -944,6 +944,93 @@ impl Graph {
         }
     }
 
+    /// Checks that `and[not] <=> or`.
+    ///
+    /// This is equivalent to `not(and(a, b)) = or(not(a), not(b))`.
+    pub fn path_and_not(&mut self, ind: usize) -> Proof {
+        if let Expression::Not(not_ind) = self.exprs[ind] {
+            if let Expression::And(a, b) = self.exprs[not_ind] {
+                let not_a = self.not(a);
+                let not_b = self.not(b);
+                let or = self.or(not_a, not_b);
+                self.proof_add_havox((ind.min(or), ind.max(or)), true)
+            } else {
+                Proof::Error
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks that `or <=> and[not]`.
+    ///
+    /// This is equivalent to `or(not(a), not(b)) = not(and(a, b))`.
+    pub fn path_not_and(&mut self, ind: usize) -> Proof {
+        if let Expression::Or(not_a, not_b) = self.exprs[ind] {
+            if let (&Expression::Not(a), &Expression::Not(b)) =
+                (&self.exprs[not_a], &self.exprs[not_b])
+            {
+                let and = self.and(a, b);
+                let not_and = self.not(and);
+                self.proof_add_havox((ind.min(not_and), ind.max(not_and)), true)
+            } else {
+                Proof::Error
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks that `or[not] <=> and`.
+    ///
+    /// This is equivalent to `not(or(a, b)) = and(not(a), not(b))`.
+    pub fn path_or_not(&mut self, ind: usize) -> Proof {
+        if let Expression::Not(not_ind) = self.exprs[ind] {
+            if let Expression::Or(a, b) = self.exprs[not_ind] {
+                let not_a = self.not(a);
+                let not_b = self.not(b);
+                let and = self.and(not_a, not_b);
+                self.proof_add_havox((ind.min(and), ind.max(and)), true)
+            } else {
+                Proof::Error
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks that `and <=> or[not]`.
+    ///
+    /// This is equivalent to `or(not(a), not(b)) = not(and(a, b))`.
+    pub fn path_not_or(&mut self, ind: usize) -> Proof {
+        if let Expression::And(not_a, not_b) = self.exprs[ind] {
+            if let (&Expression::Not(a), &Expression::Not(b)) =
+                (&self.exprs[not_a], &self.exprs[not_b])
+            {
+                let or = self.or(a, b);
+                let not_or = self.not(or);
+                self.proof_add_havox((ind.min(not_or), ind.max(not_or)), true)
+            } else {
+                Proof::Error
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
+    /// Checks that `not . not <=> id`.
+    pub fn not_not(&mut self, ind: usize) -> Proof {
+        if let Expression::Not(not_ind) = self.exprs[ind] {
+            if let Expression::Not(a) = self.exprs[not_ind] {
+                self.proof_add_havox((a.min(ind), a.max(ind)), true)
+            } else {
+                Proof::Error
+            }
+        } else {
+            Proof::Error
+        }
+    }
+
     /// Assume that two expressions are equivalent.
     ///
     /// Returns an assumption that can be used to roll back change.
@@ -996,6 +1083,13 @@ impl Graph {
                 if self.true_not(i) == Proof::False {return Proof::False};
                 if self.false_not(i) == Proof::False {return Proof::False};
                 if self.excluded_middle(i) == Proof::False {return Proof::False};
+                if self.not_not(i) == Proof::False {return Proof::False};
+
+                // These tactics might introduce new expressions.
+                if self.path_and_not(i) == Proof::False {return Proof::False};
+                if self.path_or_not(i) == Proof::False {return Proof::False};
+                if self.path_not_and(i) == Proof::False {return Proof::False};
+                if self.path_not_or(i) == Proof::False {return Proof::False};
             }
             if self.history.len() == len {
                 return Proof::True;
@@ -1776,5 +1870,76 @@ mod tests {
         assert_eq!(g.solve(), Proof::True);
         let tr = g.true_();
         assert_eq!(g.are_eq(eq, tr), Some(true));
+    }
+
+    #[test]
+    fn path_and_not() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let and = g.and(a, b);
+        let not_and = g.not(and);
+        // assert_eq!(g.path_and_not(not_and), Proof::True);
+        assert_eq!(g.solve(), Proof::True);
+        let not_a = g.not(a);
+        let not_b = g.not(b);
+        let or = g.or(not_a, not_b);
+        assert_eq!(g.are_eq(not_and, or), Some(true));
+    }
+
+    #[test]
+    fn path_not_and() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let not_a = g.not(a);
+        let not_b = g.not(b);
+        let or = g.or(not_a, not_b);
+        // assert_eq!(g.path_not_and(or), Proof::True);
+        assert_eq!(g.solve(), Proof::True);
+        let and = g.and(a, b);
+        let not_and = g.not(and);
+        assert_eq!(g.are_eq(or, not_and), Some(true));
+    }
+
+    #[test]
+    fn path_or_not() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let or = g.or(a, b);
+        let not_or = g.not(or);
+        // assert_eq!(g.path_or_not(not_or), Proof::True);
+        assert_eq!(g.solve(), Proof::True);
+        let not_a = g.not(a);
+        let not_b = g.not(b);
+        let and = g.and(not_a, not_b);
+        assert_eq!(g.are_eq(not_or, and), Some(true));
+    }
+
+    #[test]
+    fn path_not_or() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let b = g.var(1);
+        let not_a = g.not(a);
+        let not_b = g.not(b);
+        let and = g.and(not_a, not_b);
+        // assert_eq!(g.path_not_or(and), Proof::True);
+        assert_eq!(g.solve(), Proof::True);
+        let or = g.or(a, b);
+        let not_or = g.not(or);
+        assert_eq!(g.are_eq(and, not_or), Some(true));
+    }
+
+    #[test]
+    fn path_not_not() {
+        let ref mut g = Graph::new();
+        let a = g.var(0);
+        let not_a = g.not(a);
+        let not_not_a = g.not(not_a);
+        // assert_eq!(g.not_not(not_not_a), Proof::True);
+        assert_eq!(g.solve(), Proof::True);
+        assert_eq!(g.are_eq(not_not_a, a), Some(true));
     }
 }
