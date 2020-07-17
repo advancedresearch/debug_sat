@@ -9,5 +9,6 @@ repository = "https://github.com/advancedresearch/debug_sat.git"
 homepage = "https://github.com/advancedresearch/debug_sat"
 documentation = "https://docs.rs/debug_sat"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
