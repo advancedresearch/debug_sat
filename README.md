@@ -48,7 +48,7 @@ An assumption is added to a history stack and can be undoed or inverted.
 
 There are two kinds of assumptions: Equality and inequality.
 Instead of saying that a variable `a` is `true`,
-you say that `a` is equivalent to `true` or not equivalent to `false`.
+you say that `a` is equivalent to `true` or inequal to `false`.
 
 The `Graph::are_eq` method is used to check the value of an variable or expression.
 
@@ -85,3 +85,29 @@ assert_eq!(graph.are_eq(a_and_b, a), Some(true));
 ```
 
 For more information about tactics do, see the `Proof` enum.
+
+### Design
+
+Uses a graph that links expressions together.
+Expressions that are grammatically identical has the same id.
+Commutative operators are ordered on insertion of a new expression,
+to make them trivial equivalent.
+New expressions are never deleted from the graph, even after making new assumptions.
+This does not affect soundness because expressions only have value by their constraints.
+
+Tactics are based on entangled functions under equality and inequality plus normal currying.
+One nice mathematical property of entangled boolean functions of 2 arguments
+is that every equality or inequality constraint reduces the function to 0 or 1 arguments.
+This corresponds to natural deduction, so the tactics can be used for assisted theorem proving.
+You can find more information about this in papers about entangled functions
+in the research repository for [Path Semantics](https://github.com/advancedresearch/path_semantics).
+
+A first-order Havox diagram is used prove equality and inequality of expressions.
+First order means it does not infer between edges.
+Law of excluded middle is added as tactic to specialize inference on boolean logic.
+Relations are stored on the current provable minimum ids in the moment of insertion.
+This solves a soundness problem when searching for representatives for equivalence classes
+(not sure why it works at this moment, but believe it got something to with ordering the relations).
+It also accelerates proof of inequality since these relations are often looked up directly.
+For more information about Havox diagrams, see papers about Havox diagrams
+in the research repostiory for [Path Semantics](https://github.com/advancedresearch/path_semantics).

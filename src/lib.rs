@@ -48,7 +48,7 @@
 //!
 //! There are two kinds of assumptions: Equality and inequality.
 //! Instead of saying that a variable `a` is `true`,
-//! you say that `a` is equivalent to `true` or not equivalent to `false`.
+//! you say that `a` is equivalent to `true` or inequal to `false`.
 //!
 //! The `Graph::are_eq` method is used to check the value of an variable or expression.
 //!
@@ -97,7 +97,7 @@
 //!
 //! Tactics are based on entangled functions under equality and inequality plus normal currying.
 //! One nice mathematical property of entangled boolean functions of 2 arguments
-//! is that every equality of inequality constraint reduces the function to 0 or 1 arguments.
+//! is that every equality or inequality constraint reduces the function to 0 or 1 arguments.
 //! This corresponds to natural deduction, so the tactics can be used for assisted theorem proving.
 //! You can find more information about this in papers about entangled functions
 //! in the research repository for [Path Semantics](https://github.com/advancedresearch/path_semantics).
